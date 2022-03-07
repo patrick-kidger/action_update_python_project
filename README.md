@@ -1,6 +1,6 @@
 <h1 align='center'>Update Python project:<br>Check version / Test / git tag / GitHub Release / Deploy to PyPI</h1>
 
-This is a GitHub Action to automate deployment of a new version of Python project.
+This is a GitHub Action to automate deployment of a new version of a Python project.
 
 This action will:
 - Check out your code;
