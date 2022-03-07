@@ -1,0 +1,204 @@
+name: 'Update Python project: Check version / Test / git tag / GitHub Release / Deploy to PyPI'
+author: 'Patrick Kidger'
+description: 'Builds a Python projects, runs tests, and if successful tags and uploads to PyPI'
+inputs:
+    python-version:
+        description: 'The version of Python to use.'
+        required: true
+    pypi-user:
+        description: 'Your username on PyPI.'
+        default: '__token__'
+    pypi-token:
+        description: 'A PyPI password or authentication token for your project.'
+        required: true
+    github-user:
+        description: 'Your username on GitHub.'
+        required: true
+    github-token:
+        description: 'A GitHub authentication token for your project.'
+        required: true
+    test-script:
+        description: 'The script for the tests.'
+        required: true
+    email-user:
+        description: 'An email to send notifications from.'
+        required: true
+    email-token:
+        description: 'Password for the email to send notifications from.'
+        required: true
+    email-server:
+        description: 'An SMTP server to send emails from.'
+        required: true
+    email-target:
+        description: 'An email to report successes and failures to.'
+        required: true
+branding:
+    icon: 'wind'
+    color: 'yellow'
+runs:
+    using: "composite"
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v2
+
+        - name: Set up Python ${{ inputs.python-version }}
+          uses: actions/setup-python@v2
+          with:
+              python-version: ${{ inputs.python-version }}
+
+        - name: Setup
+          shell: bash
+          run: |
+              python -m pip install --upgrade pip
+              python -m pip install wheel
+              python setup.py sdist bdist_wheel
+
+        - name: Get versions
+          id: get-versions
+          shell: bash
+          run: |
+              python -c "
+              import re
+              import setuptools
+              import subprocess
+              from pkg_resources import packaging
+              vparse = packaging.version.parse
+
+              def setup(name, version, *_, **__):
+                  global name_
+                  global checkout_version
+                  name_ = name.capitalize()
+                  checkout_version = version
+
+              setuptools.setup = setup
+              import setup  # import setup.py
+
+              pypi_version = subprocess.run(f'python -m pip index versions {name_}',
+                                            shell=True, capture_output=True).stdout
+              pypi_version = pypi_version.split(b'\n', 1)[0].split(b' ')[1][1:-1].decode('utf-8')
+              new_version = str(vparse(checkout_version) > vparse(pypi_version)).lower()
+              subprocess.run(f'echo ::set-output name=name::{name_}', shell=True)
+              subprocess.run(f'echo ::set-output name=tag::v{checkout_version}', shell=True)
+              subprocess.run(f'echo ::set-output name=new-version::{new_version}', shell=True)
+              print(f'Got checkout_version={vparse(checkout_version)!r}')
+              print(f'Got pypi_version={vparse(pypi_version)!r}')
+              print(f'Setting name={name_}')
+              print(f'Setting tag=v{checkout_version}')
+              print(f'Setting new-version={new_version}')
+              "
+
+        - name: Test sdist
+          id: test-sdist
+          if: steps.get-versions.outputs.new-version == 'true'
+          shell: bash
+          run: |
+              python -m pip install dist/*.tar.gz
+              cd $(mktemp -d)
+              set +e
+              bash -c "
+              ${{ inputs.test-script }}
+              "
+              if [ "$?" -eq 0 ]
+              then
+                  echo ::set-output name=result::true
+              else
+                  echo ::set-output name=result::false
+              fi
+              set -e
+              python -m pip uninstall -y -r <(pip freeze)
+              cd ${{ github.workspace }}
+
+        - name: Test bdist_wheel
+          id: test-bdist-wheel
+          if: steps.get-versions.outputs.new-version == 'true'
+          shell: bash
+          run: |
+              python -m pip install dist/*.whl
+              cd $(mktemp -d)
+              set +e
+              bash -c "
+              ${{ inputs.test-script }}
+              "
+              if [ "$?" -eq 0 ]
+              then
+                  echo ::set-output name=result::true
+              else
+                  echo ::set-output name=result::false
+              fi
+              set -e
+              python -m pip uninstall -y -r <(pip freeze)
+              cd ${{ github.workspace }}
+
+        - name: Logging
+          shell: bash
+          run: |
+              echo new-version=${{ steps.get-versions.outputs.new-version }}
+              echo sdist-result=${{ steps.test-sdist.outputs.result }}
+              echo bdist-result=${{ steps.test-bdist-wheel.outputs.result }}
+
+        - name: Tag
+          if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
+          shell: bash
+          run: |
+              git config --global user.email "noreply@example.com"
+              git config --global user.name "Action: Update Python project"
+              git tag "${{ steps.get-versions.outputs.tag }}" -m ""
+              git push https://${{ inputs.github-user }}:${{ inputs.github-token }}@github.com/${{ github.repository }} "${{ steps.get-versions.outputs.tag }}"
+
+        - name: GitHub release
+          if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
+          uses: softprops/action-gh-release@v1
+          with:
+              name: "${{ steps.get-versions.outputs.name }} ${{ steps.get-versions.outputs.tag }}"
+              body: "Autogenerated release notes as follows:"
+              tag_name: "${{ steps.get-versions.outputs.tag }}"
+              token: ${{ inputs.github-token }}
+              generate_release_notes: true
+
+        - name: Push to PyPI
+          if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
+          uses: pypa/gh-action-pypi-publish@release/v1
+          with:
+              user: ${{ inputs.pypi-user }}
+              password: ${{ inputs.pypi-token }}
+
+        - name: Email on success
+          if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
+          shell: bash
+          run: |
+              python -c "
+              from smtplib import SMTP
+              from email.mime.text import MIMEText
+              from_ = '${{ inputs.email-user }}'
+              to = '${{ inputs.email-target }}'
+              msg = MIMEText('')
+              msg['From'] = from_
+              msg['To'] = to
+              msg['Subject'] = 'Deploy success | ${{ github.repository }} ${{ steps.get-versions.outputs.tag }}'
+              with SMTP('${{ inputs.email-server }}') as s:
+                  s.login('${{ inputs.email-user }}', '${{ inputs.email-token }}')
+                  s.sendmail(from_, [to], msg.as_string())
+              "
+
+        - name: Email on failure
+          if: (steps.get-versions.outputs.new-version == 'true') && ((steps.test-sdist.outputs.result != 'true') || (steps.test-bdist-wheel.outputs.result != 'true'))
+          shell: bash
+          run: |
+              python -c "
+              from smtplib import SMTP
+              from email.mime.text import MIMEText
+              from_ = '${{ inputs.email-user }}'
+              to = '${{ inputs.email-target }}'
+              msg = MIMEText('')
+              msg['From'] = from_
+              msg['To'] = to
+              msg['Subject'] = 'Deploy ERROR | ${{ github.repository }} ${{ steps.get-versions.outputs.tag }}'
+              with SMTP('${{ inputs.email-server }}') as s:
+                  s.login('${{ inputs.email-user }}', '${{ inputs.email-token }}')
+                  s.sendmail(from_, [to], msg.as_string())
+              "
+        
+        - name: Fail
+          if: (steps.get-versions.outputs.new-version == 'true') && ((steps.test-sdist.outputs.result != 'true') || (steps.test-bdist-wheel.outputs.result != 'true'))
+          shell: bash
+          run: exit 1
