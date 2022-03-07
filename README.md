@@ -12,6 +12,9 @@ This action will:
         - An annotated git tag is added;
         - A GitHub Release is made
         - `sdist` and `bdist_wheel` are uploaded to PyPI.
+        - You will receive an email confirming the success.
+    - Else:
+        - You will receive an email reporting the failure.
 
 ### Usage
 
