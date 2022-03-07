@@ -70,8 +70,8 @@ The following are options for passing to `with`:
 
 Notes on `test-script`:
 
-- Note that it runs in a temporary directory. Thus you will need to copy your tests over as in the example above. This is avoid spuriously passing tests: it can happen that files have been incorrectly left out of the `sdist`/`bdist_wheel`, but are still available through the repository itself.
-- Any `"` marks must be escaped as `\"`.
+- Note that it runs in a temporary directory. Thus you will need to copy your tests over as in the example above. This is to avoid spuriously passing tests: it can happen that files have been incorrectly left out of the `sdist`/`bdist_wheel`, but are still available through the repository itself.
+- Any `"` charachters must be escaped as `\"`.
 - The exit code of this script is used to determine whether the tests count as having passed or not. `0` is a pass; everything else is a failure.
 
 ### FAQ
