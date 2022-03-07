@@ -46,7 +46,7 @@ jobs:
             github-user: your-username-here
             github-token: ${{ secrets.token_github }}
             email-user: your-email-here@example.com
-            email-token: your-password-here
+            email-token: ${{ secrets.token_email }}
             email-server: example.com
             email-target: your-email-here@example.com
 ```
