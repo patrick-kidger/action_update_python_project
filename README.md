@@ -42,11 +42,11 @@ jobs:
                 python -m pip install pytest
                 cp -r ${{ github.workspace }}/test ./test
                 pytest
-            pypi-token: ${{ secrets.token_pypi }}
+            pypi-token: ${{ secrets.pypi_token }}
             github-user: your-username-here
-            github-token: ${{ secrets.token_github }}
+            github-token: ${{ github.token }}  # automatically created token
             email-user: your-email-here@example.com
-            email-token: ${{ secrets.token_email }}
+            email-token: ${{ secrets.email_token }}
             email-server: example.com
             email-target: your-email-here@example.com
 ```
