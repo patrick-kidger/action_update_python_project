@@ -50,39 +50,34 @@ runs:
           shell: bash
           run: |
               python -m pip install --upgrade pip
-              python -m pip install wheel
-              python setup.py sdist bdist_wheel
+              python -m pip install build
+              python -m build
 
         - name: Get versions
           id: get-versions
           shell: bash
           run: |
               python -c "
-              import re
-              import setuptools
               import subprocess
-              from pkg_resources import packaging
-              vparse = packaging.version.parse
+              import tomllib
 
-              def setup(name, version, *_, **__):
-                  global name_
-                  global checkout_version
-                  name_ = name.capitalize()
-                  checkout_version = version
+              vparse = lambda x: tuple(map(int, x.split('.')))
 
-              setuptools.setup = setup
-              import setup  # import setup.py
+              with open('pyproject.toml', 'rb') as f:
+                  data = tomllib.load(f)
+              name = data['project']['name']
+              checkout_version = data['project']['version']
 
-              pypi_version = subprocess.run(f'python -m pip index versions {name_}',
+              pypi_version = subprocess.run(f'python -m pip index versions {name}',
                                             shell=True, capture_output=True).stdout
               pypi_version = pypi_version.split(b'\n', 1)[0].split(b' ')[1][1:-1].decode('utf-8')
               new_version = str(vparse(checkout_version) > vparse(pypi_version)).lower()
-              subprocess.run(f'echo ::set-output name=name::{name_}', shell=True)
-              subprocess.run(f'echo ::set-output name=tag::v{checkout_version}', shell=True)
-              subprocess.run(f'echo ::set-output name=new-version::{new_version}', shell=True)
+              subprocess.run(f'echo name={name} >> $GITHUB_OUTPUT', shell=True)
+              subprocess.run(f'echo tag=v{checkout_version} >> $GITHUB_OUTPUT', shell=True)
+              subprocess.run(f'echo new-version={new_version} >> $GITHUB_OUTPUT', shell=True)
               print(f'Got checkout_version={vparse(checkout_version)!r}')
               print(f'Got pypi_version={vparse(pypi_version)!r}')
-              print(f'Setting name={name_}')
+              print(f'Setting name={name}')
               print(f'Setting tag=v{checkout_version}')
               print(f'Setting new-version={new_version}')
               "
@@ -100,9 +95,9 @@ runs:
               "
               if [ "$?" -eq 0 ]
               then
-                  echo ::set-output name=result::true
+                  echo result=true >> $GITHUB_OUTPUT
               else
-                  echo ::set-output name=result::false
+                  echo result=false >> $GITHUB_OUTPUT
               fi
               set -e
               python -m pip uninstall -y -r <(pip freeze)
@@ -121,9 +116,9 @@ runs:
               "
               if [ "$?" -eq 0 ]
               then
-                  echo ::set-output name=result::true
+                  echo result=true >> $GITHUB_OUTPUT
               else
-                  echo ::set-output name=result::false
+                  echo result=false >> $GITHUB_OUTPUT
               fi
               set -e
               python -m pip uninstall -y -r <(pip freeze)
