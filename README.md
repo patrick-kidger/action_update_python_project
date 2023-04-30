@@ -49,7 +49,7 @@ jobs:
             github-token: ${{ github.token }}  # automatically created token
             email-user: your-email-here@example.com
             email-token: ${{ secrets.email_token }}
-            email-server: example.com
+            email-server: example.com:587
             email-target: your-email-here@example.com
 ```
 
@@ -67,7 +67,7 @@ The following are options for passing to `with`:
 - `github-token`: What GitHub token to use when authenticating the release with GitHub.
 - `email-user`: What email to send success/failure notifications from.
 - `email-token`: The corresponding password.
-- `email-server`: Address of the SMTP server; `email-user` and `email-token` will be used to authenticate with this server.
+- `email-server`: Address of the SMTP server; `email-user` and `email-token` will be used to authenticate with this server. This must not have any "https://" prefix. It must include a port number at the end; on most servers this will be 587.
 - `email-target`: What email to send success/failure notifications to.
 
 Notes on `test-script`:
