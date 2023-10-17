@@ -32,6 +32,9 @@ inputs:
     email-target:
         description: 'An email to report successes and failures to.'
         required: true
+    email-starttls:
+        description: 'Explicitly starttls to connect to SMTP server'
+        default: false
 branding:
     icon: 'wind'
     color: 'yellow'
@@ -171,7 +174,8 @@ runs:
               msg['To'] = to
               msg['Subject'] = 'Deploy success | ${{ github.repository }} ${{ steps.get-versions.outputs.tag }}'
               with SMTP('${{ inputs.email-server }}') as s:
-                  s.starttls()
+                  if ${{ inputs.email-starttls }} == 'true':
+                      s.starttls()
                   s.login('${{ inputs.email-user }}', '${{ inputs.email-token }}')
                   s.sendmail(from_, [to], msg.as_string())
               "
@@ -190,7 +194,8 @@ runs:
               msg['To'] = to
               msg['Subject'] = 'Deploy ERROR | ${{ github.repository }} ${{ steps.get-versions.outputs.tag }}'
               with SMTP('${{ inputs.email-server }}') as s:
-                  s.starttls()
+                  if ${{ inputs.email-starttls }} == 'true':
+                      s.starttls()
                   s.login('${{ inputs.email-user }}', '${{ inputs.email-token }}')
                   s.sendmail(from_, [to], msg.as_string())
               "
