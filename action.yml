@@ -171,6 +171,7 @@ runs:
               msg['To'] = to
               msg['Subject'] = 'Deploy success | ${{ github.repository }} ${{ steps.get-versions.outputs.tag }}'
               with SMTP('${{ inputs.email-server }}') as s:
+                  s.starttls()
                   s.login('${{ inputs.email-user }}', '${{ inputs.email-token }}')
                   s.sendmail(from_, [to], msg.as_string())
               "
@@ -189,6 +190,7 @@ runs:
               msg['To'] = to
               msg['Subject'] = 'Deploy ERROR | ${{ github.repository }} ${{ steps.get-versions.outputs.tag }}'
               with SMTP('${{ inputs.email-server }}') as s:
+                  s.starttls()
                   s.login('${{ inputs.email-user }}', '${{ inputs.email-token }}')
                   s.sendmail(from_, [to], msg.as_string())
               "
