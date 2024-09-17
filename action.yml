@@ -20,21 +20,6 @@ inputs:
     test-script:
         description: 'The script for the tests.'
         required: true
-    email-user:
-        description: 'An email to send notifications from.'
-        required: true
-    email-token:
-        description: 'Password for the email to send notifications from.'
-        required: true
-    email-server:
-        description: 'An SMTP server to send emails from.'
-        required: true
-    email-target:
-        description: 'An email to report successes and failures to.'
-        required: true
-    email-starttls:
-        description: 'Explicitly starttls to connect to SMTP server'
-        default: false
 branding:
     icon: 'wind'
     color: 'yellow'
@@ -159,46 +144,6 @@ runs:
           with:
               user: ${{ inputs.pypi-user }}
               password: ${{ inputs.pypi-token }}
-
-        - name: Email on success
-          if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
-          shell: bash
-          run: |
-              python -c "
-              from smtplib import SMTP
-              from email.mime.text import MIMEText
-              from_ = '${{ inputs.email-user }}'
-              to = '${{ inputs.email-target }}'
-              msg = MIMEText('')
-              msg['From'] = from_
-              msg['To'] = to
-              msg['Subject'] = 'Deploy success | ${{ github.repository }} ${{ steps.get-versions.outputs.tag }}'
-              with SMTP('${{ inputs.email-server }}') as s:
-                  if ${{ inputs.email-starttls }} == 'true':
-                      s.starttls()
-                  s.login('${{ inputs.email-user }}', '${{ inputs.email-token }}')
-                  s.sendmail(from_, [to], msg.as_string())
-              "
-
-        - name: Email on failure
-          if: (steps.get-versions.outputs.new-version == 'true') && ((steps.test-sdist.outputs.result != 'true') || (steps.test-bdist-wheel.outputs.result != 'true'))
-          shell: bash
-          run: |
-              python -c "
-              from smtplib import SMTP
-              from email.mime.text import MIMEText
-              from_ = '${{ inputs.email-user }}'
-              to = '${{ inputs.email-target }}'
-              msg = MIMEText('')
-              msg['From'] = from_
-              msg['To'] = to
-              msg['Subject'] = 'Deploy ERROR | ${{ github.repository }} ${{ steps.get-versions.outputs.tag }}'
-              with SMTP('${{ inputs.email-server }}') as s:
-                  if ${{ inputs.email-starttls }} == 'true':
-                      s.starttls()
-                  s.login('${{ inputs.email-user }}', '${{ inputs.email-token }}')
-                  s.sendmail(from_, [to], msg.as_string())
-              "
         
         - name: Fail
           if: (steps.get-versions.outputs.new-version == 'true') && ((steps.test-sdist.outputs.result != 'true') || (steps.test-bdist-wheel.outputs.result != 'true'))

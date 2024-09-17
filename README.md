@@ -12,9 +12,6 @@ This action will:
         - An annotated git tag is added;
         - A GitHub Release is made
         - The sdist and wheel are both uploaded to PyPI.
-        - You will receive an email confirming the success.
-    - Else:
-        - You will receive an email reporting the failure.
 
 ### Usage
 
@@ -47,10 +44,6 @@ jobs:
             pypi-token: ${{ secrets.pypi_token }}
             github-user: your-username-here
             github-token: ${{ github.token }}  # automatically created token
-            email-user: your-email-here@example.com
-            email-token: ${{ secrets.email_token }}
-            email-server: example.com:587
-            email-target: your-email-here@example.com
 ```
 
 This will run every time the `main` branch is updated. If the version has updated, then it will trigger things as described above.
@@ -65,10 +58,6 @@ The following are options for passing to `with`:
 - `pypi-token`: What password or token to use when pushing to PyPI.
 - `github-user`: What GitHub user to use when authenticating the release with GitHub.
 - `github-token`: What GitHub token to use when authenticating the release with GitHub.
-- `email-user`: What email to send success/failure notifications from.
-- `email-token`: The corresponding password.
-- `email-server`: Address of the SMTP server; `email-user` and `email-token` will be used to authenticate with this server. This must not have any "https://" prefix. It must include a port number at the end; on most servers this will be 587.
-- `email-target`: What email to send success/failure notifications to.
 
 Notes on `test-script`:
 
