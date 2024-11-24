@@ -119,6 +119,13 @@ runs:
               echo sdist-result=${{ steps.test-sdist.outputs.result }}
               echo bdist-result=${{ steps.test-bdist-wheel.outputs.result }}
 
+        - name: Push to PyPI
+          if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
+          uses: pypa/gh-action-pypi-publish@v1.12.2
+          with:
+              user: ${{ inputs.pypi-user }}
+              password: ${{ inputs.pypi-token }}
+        
         - name: Tag
           if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
           shell: bash
@@ -138,13 +145,6 @@ runs:
               token: ${{ inputs.github-token }}
               generate_release_notes: true
 
-        - name: Push to PyPI
-          if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
-          uses: pypa/gh-action-pypi-publish@release/v1
-          with:
-              user: ${{ inputs.pypi-user }}
-              password: ${{ inputs.pypi-token }}
-        
         - name: Fail
           if: (steps.get-versions.outputs.new-version == 'true') && ((steps.test-sdist.outputs.result != 'true') || (steps.test-bdist-wheel.outputs.result != 'true'))
           shell: bash
