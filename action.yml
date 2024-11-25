@@ -121,11 +121,14 @@ runs:
 
         - name: Push to PyPI
           if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
-          uses: pypa/gh-action-pypi-publish@v1.12.2
-          with:
-              user: ${{ inputs.pypi-user }}
-              password: ${{ inputs.pypi-token }}
-        
+          env:
+            TWINE_USERNAME: ${{ inputs.pypi-user }}
+            TWINE_PASSWORD: ${{ inputs.pypi-token }}
+          shell: bash
+          run: |
+              python -m pip install twine
+              python -m twine upload dist/*
+
         - name: Tag
           if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
           shell: bash
