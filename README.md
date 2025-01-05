@@ -19,6 +19,8 @@ Requires a Linux runner.
 
 Assumes that your project uses a `pyproject.toml` file; the `project.name` and `project.version` fields will be accessed. In particular the latter must not be dynamic. (You should put `__version__ = importlib.metadata.version(your_package_name)` in your top-level `__init__.py` file to get the version at runtime.)
 
+You should go to `<your repository> > Settings > Actions > General > Workflow permissions` and enable `Read and write permissions` so that releases can be made to GitHub.
+
 ### Example
 
 ```
