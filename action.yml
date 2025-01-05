@@ -38,7 +38,7 @@ runs:
           shell: bash
           run: |
               python -m pip install --upgrade pip
-              python -m pip install build
+              python -m pip install build uv
               python -m build
 
         - name: Get versions
@@ -75,8 +75,9 @@ runs:
           if: steps.get-versions.outputs.new-version == 'true'
           shell: bash
           run: |
-              python -m pip install dist/*.tar.gz
               cd $(mktemp -d)
+              python -m uv venv
+              python -m uv pip install ${{ github.workspace }}/dist/*.tar.gz --target .venv/lib/*/site-packages/
               set +e
               bash -c "
               ${{ inputs.test-script }}
@@ -88,7 +89,6 @@ runs:
                   echo result=false >> $GITHUB_OUTPUT
               fi
               set -e
-              python -m pip uninstall -y -r <(pip freeze)
               cd ${{ github.workspace }}
 
         - name: Test bdist_wheel
@@ -96,8 +96,9 @@ runs:
           if: steps.get-versions.outputs.new-version == 'true'
           shell: bash
           run: |
-              python -m pip install dist/*.whl
               cd $(mktemp -d)
+              python -m uv venv
+              python -m uv pip install ${{ github.workspace }}/dist/*.whl --target .venv/lib/*/site-packages/
               set +e
               bash -c "
               ${{ inputs.test-script }}
@@ -109,7 +110,6 @@ runs:
                   echo result=false >> $GITHUB_OUTPUT
               fi
               set -e
-              python -m pip uninstall -y -r <(pip freeze)
               cd ${{ github.workspace }}
 
         - name: Logging

@@ -34,13 +34,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Release
-        uses: patrick-kidger/action_update_python_project@v1
+        uses: patrick-kidger/action_update_python_project@v7
         with:
             python-version: "3.11"
             test-script: |
-                python -m pip install pytest
                 cp -r ${{ github.workspace }}/test ./test
-                pytest
+                cp ${{ github.workspace }}/pyproject.toml ./pyproject.toml
+                uv sync --extra dev --no-install-project --inexact
+                uv run --no-sync pytest
             pypi-token: ${{ secrets.pypi_token }}
             github-user: your-username-here
             github-token: ${{ github.token }}  # automatically created token
@@ -61,9 +62,10 @@ The following are options for passing to `with`:
 
 Notes on `test-script`:
 
-- Note that it runs in a temporary directory. Thus you will need to copy your tests over as in the example above. This is to avoid spuriously passing tests: it can happen that files have been incorrectly left out of the sdist/wheel, but are still available through the repository itself.
+- It runs in a temporary directory. Thus you will need to copy your tests over as in the example above. This is to avoid spuriously passing tests: it can happen that files have been incorrectly left out of the sdist/wheel, but are still available through the repository itself.
 - Any `"` characters must be escaped as `\"`.
 - The exit code of this script is used to determine whether the tests count as having passed or not. `0` is a pass; everything else is a failure.
+- The code from your library will have been installed into a fresh virtual environment at `./.venv` using `uv pip install`. The `uv sync` command in the example above is the appropriate invocation to install the `dev` extras from copied `pyproject.toml`, *without* also overwriting the existing install, and *without* removing the existing install.
 
 ### FAQ
 
