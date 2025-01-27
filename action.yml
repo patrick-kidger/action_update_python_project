@@ -2,14 +2,12 @@ name: 'Update Python project: Check version / Test / git tag / GitHub Release / 
 author: 'Patrick Kidger'
 description: 'Builds a Python projects, runs tests, and if successful tags and uploads to PyPI'
 inputs:
+    # Common inputs (without defaults)
     python-version:
-        description: 'The version of Python to use.'
+        description: 'The version of Python to use. Set to `false` to not install any Python and instead use a preinstalled one.'
         required: true
-    pypi-user:
-        description: 'Your username on PyPI.'
-        default: '__token__'
     pypi-token:
-        description: 'A PyPI password or authentication token for your project.'
+        description: 'A PyPI password or authentication token for your project. Set to `false` to use some other already-configured authentication mechanism.'
         required: true
     github-user:
         description: 'Your username on GitHub.'
@@ -18,19 +16,34 @@ inputs:
         description: 'A GitHub authentication token for your project.'
         required: true
     test-script:
-        description: 'The script for the tests.'
+        description: 'A bash script for the tests. A uv venv will be available to install into, using `uv` directly on the PATH, e.g. commands often look like `uv sync --foo`.'
         required: true
+    # Uncommon inputs (with defaults)
+    pypi-user:
+        description: 'Your username on PyPI.'
+        default: '__token__'
+    pypi-repository-url:
+        description: 'The repository URL to use for PyPI, if different than the default. Passed to `twine upload --repository-url`'
+        default: 'https://pypi.org/'
+    checkout:
+        description: 'Whether to check out the code. Set to `false` to disable this, e.g. if you have already done this.'
+        default: true
+    allow-first-release:
+        description: 'Whether to allow doing a first release to PyPI for a package that does not already exist there. Set to `true` to allow this.'
+        default: false
 branding:
     icon: 'wind'
     color: 'yellow'
 runs:
     using: "composite"
     steps:
-        - name: Checkout code
+        - name: Checkout
           uses: actions/checkout@v2
+          if: inputs.checkout != 'false'
 
         - name: Set up Python ${{ inputs.python-version }}
           uses: actions/setup-python@v2
+          if: inputs.python-version != 'false'
           with:
               python-version: ${{ inputs.python-version }}
 
@@ -38,7 +51,7 @@ runs:
           shell: bash
           run: |
               python -m pip install --upgrade pip
-              python -m pip install build uv
+              python -m pip install --upgrade build uv packaging
               python -m build
 
         - name: Get versions
@@ -56,15 +69,25 @@ runs:
               name = data['project']['name']
               checkout_version = data['project']['version']
 
-              pypi_version = subprocess.run(f'python -m pip index versions {name}',
-                                            shell=True, capture_output=True).stdout
-              pypi_version = pypi_version.split(b'\n', 1)[0].split(b' ')[1][1:-1].decode('utf-8')
-              new_version = str(vparse(checkout_version) > vparse(pypi_version)).lower()
+              repo_url = '${{ inputs.pypi-repository-url }}'.removesuffix('/')
+              result = subprocess.run(f'python -m pip index versions {name} --index-url {repo_url}/simple --keyring-provider subprocess',
+                                      shell=True, capture_output=True)
+              print('Got result: ', result)
+              if result.returncode == 0:
+                  pypi_version = result.stdout.split(b'\n', 1)[0].split(b' ')[1][1:-1].decode('utf-8')
+                  pypi_version = vparse(pypi_version)
+                  new_version = str(vparse(checkout_version) > pypi_version).lower()
+              else:
+                  if result.stdout == b'' and '${{ inputs.allow-first-release }}' == 'true':
+                      pypi_version = '<new>'
+                      new_version = True
+                  else:
+                      raise RuntimeError('Something went wrong with getting the version from PyPI.')
               subprocess.run(f'echo name={name} >> $GITHUB_OUTPUT', shell=True)
               subprocess.run(f'echo tag=v{checkout_version} >> $GITHUB_OUTPUT', shell=True)
               subprocess.run(f'echo new-version={new_version} >> $GITHUB_OUTPUT', shell=True)
               print(f'Got checkout_version={vparse(checkout_version)!r}')
-              print(f'Got pypi_version={vparse(pypi_version)!r}')
+              print(f'Got pypi_version={pypi_version!r}')
               print(f'Setting name={name}')
               print(f'Setting tag=v{checkout_version}')
               print(f'Setting new-version={new_version}')
@@ -126,8 +149,12 @@ runs:
             TWINE_PASSWORD: ${{ inputs.pypi-token }}
           shell: bash
           run: |
+              if [ "${TWINE_PASSWORD}" == "false" ]; then
+                unset TWINE_USERNAME
+                unset TWINE_PASSWORD
+              fi
               python -m pip install twine
-              python -m twine upload dist/*
+              python -m twine upload --repository-url ${{ inputs.pypi-repository-url }} --verbose --non-interactive dist/*
 
         - name: Tag
           if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')

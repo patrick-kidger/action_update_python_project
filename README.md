@@ -53,14 +53,20 @@ This will run every time the `main` branch is updated. If the version has update
 
 ### Options
 
-The following are options for passing to `with`:
+The following are mandatory arguments (for passing to `with`) that must be specified:
 
-- `python-version`: What Python version to run everything with. Must be at least 3.11.
-- `test-script`: What test script to run.
-- `pypi-user`: What username to use when pushing to PyPI. Defaults to `__token__`, corresponding to the use of a PyPI token.
-- `pypi-token`: What password or token to use when pushing to PyPI.
+- `python-version`: What Python version to run everything with. Must be at least 3.11. Set to `false` to skip this (and use whatever Python you already have on the system).
+- `test-script`: What test script to run. Will execute in a precreated `uv` venv, e.g. commands often look like `uv sync --foo`.
+- `pypi-token`: What password or token to use when pushing to PyPI. Set to `false` to use some other already-configured authentication mechanism, e.g. from a previous job that runs `gcloud auth`.
 - `github-user`: What GitHub user to use when authenticating the release with GitHub.
 - `github-token`: What GitHub token to use when authenticating the release with GitHub.
+
+The following are optional arguments that come with a default value:
+
+- `pypi-user`: What username to use when pushing to PyPI. Defaults to `'__token__'`, corresponding to the use of a PyPI token.
+- `pypi-repository-url`: What PyPI repository to use. Defaults to `'https://pypi.org/'`
+- `checkout`: Whether to check out the repository. Set to `false` to disable this if you've already done this in an earlier step.
+- `allow-first-release`: Whether to allow a first release to PyPI. Defaults to `false`, to avoid accidentally pushing code publicly until you're ready. (We generally recommend pushing a first release manually when you're ready, but this flag can be useful if you're pushing to an internal PyPI repository that only your CD has authentication for.)
 
 Notes on `test-script`:
 
