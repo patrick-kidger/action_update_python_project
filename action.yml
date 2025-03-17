@@ -148,13 +148,19 @@ runs:
             TWINE_USERNAME: ${{ inputs.pypi-user }}
             TWINE_PASSWORD: ${{ inputs.pypi-token }}
           shell: bash
+          # If I understand correctly then default PyPI is a bit weird in that it has a different upload URL.
           run: |
               if [ "${TWINE_PASSWORD}" == "false" ]; then
                 unset TWINE_USERNAME
                 unset TWINE_PASSWORD
               fi
               python -m pip install twine
-              python -m twine upload --repository-url ${{ inputs.pypi-repository-url }} --verbose --non-interactive dist/*
+              if [ ${{ inputs.pypi-repository-url }} == https://pypi.org/ ]; then
+                export REPO_URL=https://upload.pypi.org/legacy/
+              else
+                export REPO_URL=${{ inputs.pypi-repository-url }}
+              fi
+              python -m twine upload --repository-url $REPO_URL --verbose --non-interactive dist/*
 
         - name: Tag
           if: (steps.get-versions.outputs.new-version == 'true') && (steps.test-sdist.outputs.result == 'true') && (steps.test-bdist-wheel.outputs.result == 'true')
