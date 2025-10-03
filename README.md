@@ -42,7 +42,7 @@ jobs:
             test-script: |
                 cp -r ${{ github.workspace }}/test ./test
                 cp ${{ github.workspace }}/pyproject.toml ./pyproject.toml
-                uv sync --extra dev --no-install-project --inexact
+                uv sync --extra tests --no-install-project --inexact
                 uv run --no-sync pytest
             pypi-token: ${{ secrets.pypi_token }}
             github-user: your-username-here
